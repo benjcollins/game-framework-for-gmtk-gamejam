@@ -30,10 +30,11 @@ type Sprite struct {
 	texWidth, texHeight float32
 }
 
-type SpriteBuffer struct {
+type Sprites struct {
 	vao      uint32
 	vbo, ibo Buffer
 	size     int
+	texture  Texture
 }
 
 func NewSprite(transform mgl32.Mat3) Sprite {
@@ -44,7 +45,7 @@ func NewSpriteFromAtlas(transform mgl32.Mat3, texOffX, texOffY, texWidth, texHei
 	return Sprite{transform, texOffX, texOffY, texWidth, texHeight}
 }
 
-func CreateSpriteBuffer(sprites []Sprite) SpriteBuffer {
+func CreateSpriteBuffer(sprites []Sprite, texture Texture) Sprites {
 
 	vao := uint32(0)
 	gl.CreateVertexArrays(1, &vao)
@@ -61,14 +62,14 @@ func CreateSpriteBuffer(sprites []Sprite) SpriteBuffer {
 	ibo := CreateBuffer()
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo.ID)
 
-	buffer := SpriteBuffer{vao, vbo, ibo, 0}
+	buffer := Sprites{vao, vbo, ibo, 0, texture}
 
 	buffer.SetContents(sprites)
 
 	return buffer
 }
 
-func (buffer *SpriteBuffer) SetContents(sprites []Sprite) {
+func (buffer *Sprites) SetContents(sprites []Sprite) {
 
 	indicies := spritesToIndicies(sprites, 0)
 	vertices := spritesToVertices(sprites)
@@ -111,7 +112,7 @@ func spritesToIndicies(sprites []Sprite, start uint32) []uint32 {
 	return indicies
 }
 
-func (buffer *SpriteBuffer) UpdateContents(start int, sprites []Sprite) {
+func (buffer *Sprites) UpdateContents(start int, sprites []Sprite) {
 	indicies := spritesToIndicies(sprites, uint32(start)*4)
 	vertices := spritesToVertices(sprites)
 
@@ -140,13 +141,13 @@ func CreateRenderer() *SpriteRenderer {
 	return &SpriteRenderer{program}
 }
 
-func (renderer *SpriteRenderer) Render(texture Texture, sprites SpriteBuffer, transform mgl32.Mat3, aspectRatio float32) {
+func (renderer *SpriteRenderer) Render(sprites Sprites, transform mgl32.Mat3, aspectRatio float32) {
 
-	texture.Bind(0)
+	sprites.texture.Bind(0)
 
 	gl.BindVertexArray(sprites.vao)
 
-	renderer.program.Bind(map[string]interface{}{
+	renderer.program.Bind(map[string]Uniform{
 		"textureSampler": 0,
 		"transform":      ComputeAspectRatio(aspectRatio).Mul3(transform),
 	})
@@ -165,7 +166,7 @@ func (renderer SpriteRenderer) Delete() {
 	renderer.program.Delete()
 }
 
-func (buffer SpriteBuffer) Delete() {
+func (buffer Sprites) Delete() {
 	buffer.vbo.Delete()
 	buffer.ibo.Delete()
 	gl.DeleteVertexArrays(1, &buffer.vao)

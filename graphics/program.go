@@ -9,6 +9,8 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+type Uniform interface{}
+
 type Program struct {
 	ID       uint32
 	uniforms map[string]int32
@@ -39,7 +41,7 @@ func CreateProgram(shaders []Shader) (*Program, error) {
 	return nil, errors.New(log)
 }
 
-func (program *Program) Bind(uniforms map[string]interface{}) {
+func (program *Program) Bind(uniforms map[string]Uniform) {
 	for name := range uniforms {
 		if _, ok := program.uniforms[name]; !ok {
 			location := gl.GetUniformLocation(program.ID, gl.Str(name+"\x00"))
@@ -57,6 +59,8 @@ func (program *Program) Bind(uniforms map[string]interface{}) {
 			gl.Uniform1i(location, int32(data))
 		case float32:
 			gl.Uniform1f(location, data)
+		case mgl32.Vec2:
+			gl.Uniform2fv(location, 1, &data[0])
 		case mgl32.Mat3:
 			gl.UniformMatrix3fv(location, 1, true, &data[0])
 		}

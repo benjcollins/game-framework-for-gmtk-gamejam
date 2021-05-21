@@ -16,6 +16,9 @@ import (
 //go:embed test.png
 var Texture []byte
 
+//go:embed particle.png
+var FireTexture []byte
+
 func check(err error) {
 	if err != nil {
 		log.Fatal(err)
@@ -41,6 +44,9 @@ func main() {
 	err = gl.Init()
 	check(err)
 
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
 	fmt.Println(gl.GoStr(gl.GetString(gl.VERSION)))
 
 	renderer := graphics.CreateRenderer()
@@ -49,12 +55,21 @@ func main() {
 	check(err)
 	defer texture.Delete()
 
-	spriteBuffer := graphics.CreateSpriteBuffer([]graphics.Sprite{
+	sprites := graphics.CreateSpriteBuffer([]graphics.Sprite{
 		graphics.NewSprite(mgl32.Translate2D(0.1, 0.4).Mul3(mgl32.Scale2D(0.2, 0.2))),
 		graphics.NewSprite(mgl32.Translate2D(-0.3, -0.3).Mul3(mgl32.Scale2D(0.2, 0.2))),
 		graphics.NewSpriteFromAtlas(mgl32.Scale2D(0.3, 0.3), 0, 0, 0.5, 0.5),
-	})
-	defer spriteBuffer.Delete()
+	}, texture)
+	defer sprites.Delete()
+
+	particleTexture, err := graphics.CreateTexture(FireTexture)
+	check(err)
+	defer particleTexture.Delete()
+	particleRenderer := graphics.CreateParticleRenderer()
+	particleBuffer := particleRenderer.CreateParticleBuffer([]graphics.Particle{
+		graphics.NewParticle(mgl32.Scale2D(0.5, 0.5), 0.0),
+		graphics.NewParticle(mgl32.Translate2D(0.3, 0.4).Mul3(mgl32.Scale2D(0.2, 0.2)), 1.5),
+	}, particleTexture, 4, 4)
 
 	gl.ClearColor(0.5, 0.3, 0.8, 1.0)
 
@@ -68,7 +83,9 @@ func main() {
 		glfw.PollEvents()
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		width, height := window.GetSize()
-		renderer.Render(texture, spriteBuffer, transform, float32(width)/float32(height))
+		aspectRatio := float32(width) / float32(height)
+		renderer.Render(sprites, transform, aspectRatio)
+		particleRenderer.Render(particleBuffer, transform, aspectRatio)
 		window.SwapBuffers()
 	}
 }
