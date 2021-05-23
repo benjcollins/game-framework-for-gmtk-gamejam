@@ -22,8 +22,8 @@ type ParticleRenderer struct {
 }
 
 type Particle struct {
-	transform mgl32.Mat3
-	frame     float32
+	Transform mgl32.Mat3
+	Frame     float32
 }
 
 type ParticleVertex struct {
@@ -31,19 +31,48 @@ type ParticleVertex struct {
 	tx, ty float32
 }
 
-type Particles struct {
+type ParticleSystem struct {
 	vao              uint32
 	ibo              Buffer
 	texture          Texture
 	instances        int
+	capacity         int
 	hFrames, vFrames int
+	update           func(*Particle) bool
+}
+
+func (system *ParticleSystem) Update() {
+	gl.BindBuffer(gl.ARRAY_BUFFER, system.ibo.ID)
+	base := gl.MapBuffer(gl.ARRAY_BUFFER, gl.READ_WRITE)
+	for i := 0; i < system.instances; {
+		p := (*Particle)(unsafe.Pointer(uintptr(base) + uintptr(i)*unsafe.Sizeof(Particle{})))
+		if !system.update(p) {
+			system.instances -= 1
+			lastParticle := (*Particle)(unsafe.Pointer(uintptr(base) + uintptr(system.instances)*unsafe.Sizeof(Particle{})))
+			*p = *lastParticle
+		} else {
+			i++
+		}
+	}
+	gl.UnmapBuffer(gl.ARRAY_BUFFER)
+}
+
+func (system *ParticleSystem) AppendParticle(particles ...Particle) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, system.ibo.ID)
+	base := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
+	for i, particle := range particles {
+		p := (*Particle)(unsafe.Pointer(uintptr(base) + uintptr(system.instances+i)*unsafe.Sizeof(Particle{})))
+		*p = particle
+	}
+	system.instances += len(particles)
+	gl.UnmapBuffer(gl.ARRAY_BUFFER)
 }
 
 func NewParticle(transform mgl32.Mat3, frame float32) Particle {
 	return Particle{transform, frame}
 }
 
-func (renderer *ParticleRenderer) CreateParticleBuffer(particles []Particle, texture Texture, hFrames, vFrames int) *Particles {
+func (renderer *ParticleRenderer) CreateParticleSystem(capacity int, texture Texture, hFrames, vFrames int, update func(*Particle) bool) *ParticleSystem {
 	vao := uint32(0)
 	gl.CreateVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
@@ -56,7 +85,7 @@ func (renderer *ParticleRenderer) CreateParticleBuffer(particles []Particle, tex
 
 	ibo := CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, ibo.ID)
-	gl.BufferData(gl.ARRAY_BUFFER, len(particles)*int(unsafe.Sizeof(Particle{})), unsafe.Pointer(&particles[0]), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, capacity*int(unsafe.Sizeof(Particle{})), nil, gl.DYNAMIC_DRAW)
 	for i := uint32(0); i < 3; i++ {
 		gl.EnableVertexAttribArray(i + 2)
 		gl.VertexAttribPointerWithOffset(i+2, 3, gl.FLOAT, false, int32(unsafe.Sizeof(Particle{})), uintptr(i*3*4))
@@ -66,7 +95,7 @@ func (renderer *ParticleRenderer) CreateParticleBuffer(particles []Particle, tex
 	gl.VertexAttribPointerWithOffset(5, 1, gl.FLOAT, false, int32(unsafe.Sizeof(Particle{})), uintptr(9*4))
 	gl.VertexAttribDivisor(5, 1)
 
-	return &Particles{vao, ibo, texture, len(particles), hFrames, vFrames}
+	return &ParticleSystem{vao, ibo, texture, 0, capacity, hFrames, vFrames, update}
 }
 
 func CreateParticleRenderer() *ParticleRenderer {
@@ -100,7 +129,7 @@ func CreateParticleRenderer() *ParticleRenderer {
 	return &renderer
 }
 
-func (renderer *ParticleRenderer) Render(particles *Particles, transform mgl32.Mat3, aspectRatio float32) {
+func (renderer *ParticleRenderer) Render(particles *ParticleSystem, transform mgl32.Mat3, aspectRatio float32) {
 	renderer.program.Bind(map[string]Uniform{
 		"textureSampler":  0,
 		"hFrames":         particles.hFrames,

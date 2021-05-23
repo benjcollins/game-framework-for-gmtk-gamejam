@@ -4,6 +4,7 @@ import (
 	"engine/graphics"
 	"fmt"
 	"log"
+	"math/rand"
 	"runtime"
 
 	_ "embed"
@@ -13,7 +14,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-//go:embed test.png
+//go:embed campfire.png
 var Texture []byte
 
 //go:embed particle.png
@@ -56,9 +57,7 @@ func main() {
 	defer texture.Delete()
 
 	sprites := graphics.CreateSpriteBuffer([]graphics.Sprite{
-		graphics.NewSprite(mgl32.Translate2D(0.1, 0.4).Mul3(mgl32.Scale2D(0.2, 0.2))),
-		graphics.NewSprite(mgl32.Translate2D(-0.3, -0.3).Mul3(mgl32.Scale2D(0.2, 0.2))),
-		graphics.NewSpriteFromAtlas(mgl32.Scale2D(0.3, 0.3), 0, 0, 0.5, 0.5),
+		graphics.NewSprite(mgl32.Scale2D(0.5, 0.5)),
 	}, texture)
 	defer sprites.Delete()
 
@@ -66,12 +65,13 @@ func main() {
 	check(err)
 	defer particleTexture.Delete()
 	particleRenderer := graphics.CreateParticleRenderer()
-	particleBuffer := particleRenderer.CreateParticleBuffer([]graphics.Particle{
-		graphics.NewParticle(mgl32.Scale2D(0.5, 0.5), 0.0),
-		graphics.NewParticle(mgl32.Translate2D(0.3, 0.4).Mul3(mgl32.Scale2D(0.2, 0.2)), 1.5),
-	}, particleTexture, 4, 4)
+	particleSystem := particleRenderer.CreateParticleSystem(1000, particleTexture, 4, 4, func(p *graphics.Particle) bool {
+		p.Frame += 0.0005
+		p.Transform = mgl32.Translate2D(0, 0.00005).Mul3(p.Transform)
+		return p.Frame < 6
+	})
 
-	gl.ClearColor(0.5, 0.3, 0.8, 1.0)
+	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
 
 	transform := mgl32.Ident3()
 
@@ -81,11 +81,20 @@ func main() {
 
 	for !window.ShouldClose() {
 		glfw.PollEvents()
+
+		if rand.Float32() > 0.995 {
+			transform := mgl32.Scale2D(0.1, 0.1)
+			transform = mgl32.Translate2D(0.2*rand.Float32()-0.1, 0.1+0.2*rand.Float32()-0.1).Mul3(transform)
+			particleSystem.AppendParticle(graphics.NewParticle(transform, 0.0))
+		}
+
+		particleSystem.Update()
+
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		width, height := window.GetSize()
 		aspectRatio := float32(width) / float32(height)
 		renderer.Render(sprites, transform, aspectRatio)
-		particleRenderer.Render(particleBuffer, transform, aspectRatio)
+		particleRenderer.Render(particleSystem, transform, aspectRatio)
 		window.SwapBuffers()
 	}
 }
