@@ -36,7 +36,7 @@ func CreateTexture(data []byte) (Texture, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
-	borderColor := [4]float32{0.0, 0.0, 0.0, 1.0}
+	borderColor := [4]float32{0.0, 0.0, 0.0, 0.0}
 	gl.TexParameterfv(gl.TEXTURE_2D, gl.TEXTURE_BORDER_COLOR, &borderColor[0])
 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)

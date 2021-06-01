@@ -15,6 +15,10 @@ type VertexShader struct {
 	Shader
 }
 
+type GeometryShader struct {
+	Shader
+}
+
 type FragmentShader struct {
 	Shader
 }
@@ -22,6 +26,11 @@ type FragmentShader struct {
 func CreateVertexShader(source string) (VertexShader, error) {
 	shader, err := CreateShader(source, gl.VERTEX_SHADER)
 	return VertexShader{shader}, err
+}
+
+func CreateGeometryShader(source string) (GeometryShader, error) {
+	shader, err := CreateShader(source, gl.GEOMETRY_SHADER)
+	return GeometryShader{shader}, err
 }
 
 func CreateFragmentShader(source string) (FragmentShader, error) {

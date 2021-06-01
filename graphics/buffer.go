@@ -12,6 +12,10 @@ func CreateBuffer() Buffer {
 	return buffer
 }
 
+func (buffer Buffer) Bind() {
+	gl.BindBuffer(gl.ARRAY_BUFFER, buffer.ID)
+}
+
 func (buffer Buffer) Delete() {
 	gl.DeleteBuffers(1, &buffer.ID)
 }

@@ -16,7 +16,7 @@ var SpriteShaderVS string
 var SpriteShaderFS string
 
 type SpriteRenderer struct {
-	program *Program
+	program Program
 }
 
 type SpriteVertex struct {

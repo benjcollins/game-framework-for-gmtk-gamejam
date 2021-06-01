@@ -17,7 +17,7 @@ var ParticleShaderVS string
 var ParticleShaderFS string
 
 type ParticleRenderer struct {
-	program *Program
+	program Program
 	vbo     Buffer
 }
 

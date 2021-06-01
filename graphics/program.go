@@ -16,11 +16,15 @@ type Program struct {
 	uniforms map[string]int32
 }
 
-func CreateProgramVSFS(vs VertexShader, fs FragmentShader) (*Program, error) {
+func CreateProgramVSFS(vs VertexShader, fs FragmentShader) (Program, error) {
 	return CreateProgram([]Shader{vs.Shader, fs.Shader})
 }
 
-func CreateProgram(shaders []Shader) (*Program, error) {
+func CreateProgramVSGSFS(vs VertexShader, gs GeometryShader, fs FragmentShader) (Program, error) {
+	return CreateProgram([]Shader{vs.Shader, gs.Shader, fs.Shader})
+}
+
+func CreateProgram(shaders []Shader) (Program, error) {
 	programID := gl.CreateProgram()
 	for _, shader := range shaders {
 		gl.AttachShader(programID, shader.shaderID)
@@ -32,13 +36,13 @@ func CreateProgram(shaders []Shader) (*Program, error) {
 	status := int32(0)
 	gl.GetProgramiv(programID, gl.LINK_STATUS, &status)
 	if status == gl.TRUE {
-		return &Program{programID, make(map[string]int32)}, nil
+		return Program{programID, make(map[string]int32)}, nil
 	}
 	logLength := int32(0)
 	gl.GetProgramiv(programID, gl.INFO_LOG_LENGTH, &logLength)
 	log := strings.Repeat("\x00", int(logLength)+1)
 	gl.GetProgramInfoLog(programID, logLength, nil, gl.Str(log))
-	return nil, errors.New(log)
+	return Program{}, errors.New(log)
 }
 
 func (program *Program) Bind(uniforms map[string]Uniform) {

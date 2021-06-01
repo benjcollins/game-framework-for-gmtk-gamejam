@@ -35,6 +35,7 @@ func main() {
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+	glfw.WindowHint(glfw.Samples, 16)
 
 	window, err := glfw.CreateWindow(800, 600, "Example Window", nil, nil)
 	check(err)
@@ -47,11 +48,12 @@ func main() {
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.BlendEquation(gl.FUNC_ADD)
 
 	fmt.Println(gl.GoStr(gl.GetString(gl.VERSION)))
 
-	renderer := graphics.CreateRenderer()
-	defer renderer.Delete()
+	spriteRenderer := graphics.CreateRenderer()
+	defer spriteRenderer.Delete()
 	texture, err := graphics.CreateTexture(Texture)
 	check(err)
 	defer texture.Delete()
@@ -71,6 +73,15 @@ func main() {
 		return p.Frame < 6
 	})
 
+	pathRenderer := graphics.CreatePathRenderer()
+	path := graphics.Path{}
+	path.MoveTo(mgl32.Vec2{0, 0})
+	path.LineTo(mgl32.Vec2{0.2, 0})
+	// path.LineTo(mgl32.Vec2{0.5, 0.5})
+	// path.LineTo(mgl32.Vec2{0.6, 0.3})
+	// path.LineTo(mgl32.Vec2{0.8, 0.6})
+	pathBuffer := path.ToBuffer()
+
 	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
 
 	transform := mgl32.Ident3()
@@ -79,10 +90,20 @@ func main() {
 		gl.Viewport(0, 0, int32(width), int32(height))
 	})
 
+	window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+		if action != glfw.Press {
+			return
+		}
+		width, height := window.GetSize()
+		x, y := window.GetCursorPos()
+		path.LineTo(mgl32.Vec2{float32(x/float64(width)*4.0 - 2.0), float32(y/-float64(height)*4.0 + 2.0)})
+		pathBuffer = path.ToBuffer()
+	})
+
 	for !window.ShouldClose() {
 		glfw.PollEvents()
 
-		if rand.Float32() > 0.995 {
+		if rand.Float32() > 0.99 {
 			transform := mgl32.Scale2D(0.1, 0.1)
 			transform = mgl32.Translate2D(0.2*rand.Float32()-0.1, 0.1+0.2*rand.Float32()-0.1).Mul3(transform)
 			particleSystem.AppendParticle(graphics.NewParticle(transform, 0.0))
@@ -93,8 +114,9 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		width, height := window.GetSize()
 		aspectRatio := float32(width) / float32(height)
-		renderer.Render(sprites, transform, aspectRatio)
+		spriteRenderer.Render(sprites, transform, aspectRatio)
 		particleRenderer.Render(particleSystem, transform, aspectRatio)
+		pathRenderer.Stroke(pathBuffer)
 		window.SwapBuffers()
 	}
 }
