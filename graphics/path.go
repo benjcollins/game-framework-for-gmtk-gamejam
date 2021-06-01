@@ -2,6 +2,7 @@ package graphics
 
 import (
 	"log"
+	"math"
 	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
@@ -48,15 +49,78 @@ func perp(vec mgl32.Vec2) mgl32.Vec2 {
 func (path *Path) LineTo(newPoint mgl32.Vec2) {
 	newNormal := perp(newPoint.Sub(path.lastPoint)).Normalize()
 	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
-		averageNormal := newNormal.Add(path.lastNormal).Normalize()
-		thing := 1.0 / averageNormal.Dot(path.lastNormal)
-		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal.Mul(thing)})
-		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal.Mul(thing)})
+		averageNormal := averageNormals(path.lastNormal, newNormal)
+		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
 	} else {
 		path.points = append(path.points, PathVertex{path.lastPoint, newNormal})
 	}
 	path.lastPoint = newPoint
 	path.lastNormal = newNormal
+}
+
+func averageNormals(n1, n2 mgl32.Vec2) mgl32.Vec2 {
+	normal := n1.Add(n2).Normalize()
+	factor := 1.0 / normal.Dot(n1)
+	return normal.Mul(factor)
+}
+
+func normalInArc(center, point mgl32.Vec2) mgl32.Vec2 {
+	return point.Sub(center).Normalize()
+}
+
+// func (path *Path) ArcTo(newPoint mgl32.Vec2, theta float64) {
+
+// 	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
+// 		averageNormal := averageNormals(path.lastNormal, normalInArc(center, path.lastPoint))
+// 		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
+// 	} else {
+// 		path.points = append(path.points, PathVertex{path.lastPoint, normalInArc(center, path.lastPoint)})
+// 	}
+
+// 	n := 16
+// 	centerToOld := path.lastPoint.Sub(center)
+// 	startTheta := math.Atan(float64(centerToOld.Y()/centerToOld.X())) + math.Pi
+
+// 	radius := center.Sub(path.lastPoint).Len()
+
+// 	for i := 1; i < n; i++ {
+// 		turn := startTheta + theta/float64(n)*float64(i)
+// 		point := mgl32.Vec2{float32(math.Cos(turn)), float32(math.Sin(turn))}.Mul(radius).Add(center)
+// 		normal := normalInArc(center, point)
+// 		path.points = append(path.points, PathVertex{point, normal}, PathVertex{point, normal})
+// 	}
+
+// 	point := mgl32.Vec2{float32(math.Cos(startTheta + theta)), float32(math.Sin(startTheta + theta))}.Mul(radius).Add(center)
+// 	path.lastPoint = point
+// 	path.lastNormal = normalInArc(center, point)
+// }
+
+func (path *Path) ArcTo(newPoint mgl32.Vec2, theta float64) {
+
+	oldToNew := newPoint.Sub(path.lastPoint)
+	radius := 0.5 * oldToNew.Len() / float32(math.Sin(theta))
+	center := path.lastPoint.Add(newPoint).Mul(0.5).Add(mgl32.Vec2{oldToNew.Y(), -oldToNew.X()}.Normalize().Mul(float32(math.Sqrt(float64(radius*radius - 0.25*oldToNew.Len()*oldToNew.Len())))))
+
+	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
+		averageNormal := averageNormals(path.lastNormal, normalInArc(center, path.lastPoint))
+		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
+	} else {
+		path.points = append(path.points, PathVertex{path.lastPoint, normalInArc(center, path.lastPoint)})
+	}
+
+	n := 16
+	centerToOld := path.lastPoint.Sub(center)
+	startTheta := math.Atan(float64(centerToOld.Y()/centerToOld.X())) + math.Pi
+
+	for i := 1; i < n; i++ {
+		turn := startTheta - theta/float64(n)*float64(i)
+		point := mgl32.Vec2{float32(math.Cos(turn)), float32(math.Sin(turn))}.Mul(radius).Add(center)
+		normal := normalInArc(center, point)
+		path.points = append(path.points, PathVertex{point, normal}, PathVertex{point, normal})
+	}
+
+	path.lastPoint = newPoint
+	path.lastNormal = normalInArc(center, newPoint)
 }
 
 func (path *Path) MoveTo(newPoint mgl32.Vec2) {
@@ -128,4 +192,14 @@ func (renderer *PathRenderer) Stroke(path PathBuffer, transform mgl32.Mat3, colo
 		"width":     width,
 	})
 	gl.DrawArrays(gl.LINES, 0, int32(path.size))
+}
+
+func (renderer PathRenderer) Delete() {
+	renderer.fillProgram.Delete()
+	renderer.strokeProgram.Delete()
+}
+
+func (buffer PathBuffer) Delete() {
+	gl.DeleteVertexArrays(1, &buffer.vao)
+	buffer.vbo.Delete()
 }
