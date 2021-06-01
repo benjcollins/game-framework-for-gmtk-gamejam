@@ -12,13 +12,16 @@ import (
 )
 
 //go:embed shaders/path.vs
-var PathShaderVS string
+var PathVS string
 
-//go:embed shaders/path.fs
-var PathShaderFS string
+//go:embed shaders/stroke.fs
+var StrokeFS string
+
+//go:embed shaders/fill.fs
+var FillFS string
 
 //go:embed shaders/stroke.gs
-var StrokeShaderGS string
+var StrokeGS string
 
 type PathRenderer struct {
 	strokeProgram Program
@@ -159,15 +162,17 @@ func check(err error) {
 
 func CreatePathRenderer() PathRenderer {
 	renderer := PathRenderer{}
-	vs, err := CreateVertexShader(PathShaderVS)
+	vs, err := CreateVertexShader(PathVS)
 	check(err)
-	fs, err := CreateFragmentShader(PathShaderFS)
+	fs, err := CreateFragmentShader(FillFS)
 	check(err)
 	program, err := CreateProgramVSFS(vs, fs)
 	check(err)
 	renderer.fillProgram = program
 
-	gs, err := CreateGeometryShader(StrokeShaderGS)
+	gs, err := CreateGeometryShader(StrokeGS)
+	check(err)
+	fs, err = CreateFragmentShader(StrokeFS)
 	check(err)
 	program, err = CreateProgramVSGSFS(vs, gs, fs)
 	check(err)
@@ -177,11 +182,25 @@ func CreatePathRenderer() PathRenderer {
 }
 
 func (renderer *PathRenderer) Fill(path PathBuffer, transform mgl32.Mat3, color mgl32.Vec4) {
+	gl.Enable(gl.STENCIL_TEST)
+	gl.Clear(gl.STENCIL_BUFFER_BIT)
+	gl.StencilOp(gl.INVERT, gl.INVERT, gl.INVERT)
+	gl.StencilFunc(gl.ALWAYS, 0, 1)
+	gl.ColorMask(false, false, false, false)
+
 	gl.BindVertexArray(path.vao)
 	renderer.fillProgram.Bind(map[string]Uniform{
 		"transform": transform,
+		"color":     color,
 	})
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(path.size))
+
+	gl.ColorMask(true, true, true, true)
+	gl.StencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+	gl.StencilFunc(gl.EQUAL, 0xFF, 0xFF)
+	gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(path.size))
+
+	gl.Disable(gl.STENCIL_TEST)
 }
 
 func (renderer *PathRenderer) Stroke(path PathBuffer, transform mgl32.Mat3, color mgl32.Vec4, width float32) {

@@ -12,7 +12,7 @@ uniform float width;
 out float invWidth;
 
 void calculatePosition(int index, float w) {
-    gl_Position = gl_in[index].gl_Position + vec4(transform * vec3(pass_normal[index] * w, 0.0), 1.0);
+    gl_Position = gl_in[index].gl_Position + vec4(transform * vec3(pass_normal[index] * w, 0.0), 0.0);
     invWidth = width - abs(w);
     EmitVertex();
 }

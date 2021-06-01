@@ -7,7 +7,7 @@ out vec4 frag_color;
 uniform vec4 color;
 
 void main() {
-    float threshold = 0.008;
+    float threshold = 0.004;
 
     if (invWidth > threshold) {
         frag_color = color;

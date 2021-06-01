@@ -77,7 +77,7 @@ func main() {
 	defer pathRenderer.Delete()
 	path := graphics.Path{}
 	path.MoveTo(mgl32.Vec2{0, 0})
-	path.LineTo(mgl32.Vec2{0.1, 0})
+	path.LineTo(mgl32.Vec2{0.5, 0})
 	pathBuffer := path.ToBuffer()
 	defer pathBuffer.Delete()
 
@@ -97,7 +97,7 @@ func main() {
 		}
 		width, height := window.GetSize()
 		x, y := window.GetCursorPos()
-		point := mgl32.Vec3{float32(x/float64(width)*4.0 - 2.0), float32(y/-float64(height)*4.0 + 2.0), 1.0}
+		point := mgl32.Vec3{float32(x/float64(width)*2.0 - 1.0), float32(y/-float64(height)*2.0 + 1.0), 1.0}
 
 		path.LineTo(aspectRatio.Inv().Mul3x1(point).Vec2())
 
@@ -121,6 +121,7 @@ func main() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		// spriteRenderer.Render(sprites, transform)
 		// particleRenderer.Render(particleSystem, transform)
+		pathRenderer.Fill(pathBuffer, transform, mgl32.Vec4{0, 0, 0, 1})
 		pathRenderer.Stroke(pathBuffer, transform, mgl32.Vec4{0, 0, 0, 1}, 0.02)
 		window.SwapBuffers()
 	}
