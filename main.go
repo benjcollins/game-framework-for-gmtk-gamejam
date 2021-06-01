@@ -35,7 +35,7 @@ func main() {
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-	glfw.WindowHint(glfw.Samples, 16)
+	// glfw.WindowHint(glfw.Samples, 16)
 
 	window, err := glfw.CreateWindow(800, 600, "Example Window", nil, nil)
 	check(err)
@@ -84,10 +84,12 @@ func main() {
 
 	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
 
-	transform := mgl32.Ident3()
+	width, height := window.GetSize()
+	aspectRatio := graphics.ComputeAspectRatio(float32(width) / float32(height))
 
 	window.SetSizeCallback(func(w *glfw.Window, width, height int) {
 		gl.Viewport(0, 0, int32(width), int32(height))
+		aspectRatio = graphics.ComputeAspectRatio(float32(width) / float32(height))
 	})
 
 	window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
@@ -96,7 +98,8 @@ func main() {
 		}
 		width, height := window.GetSize()
 		x, y := window.GetCursorPos()
-		path.LineTo(mgl32.Vec2{float32(x/float64(width)*4.0 - 2.0), float32(y/-float64(height)*4.0 + 2.0)})
+		point := mgl32.Vec3{float32(x/float64(width)*4.0 - 2.0), float32(y/-float64(height)*4.0 + 2.0), 1.0}
+		path.LineTo(aspectRatio.Inv().Mul3x1(point).Vec2())
 		pathBuffer = path.ToBuffer()
 	})
 
@@ -111,12 +114,12 @@ func main() {
 
 		particleSystem.Update()
 
+		transform := aspectRatio
+
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		width, height := window.GetSize()
-		aspectRatio := float32(width) / float32(height)
-		spriteRenderer.Render(sprites, transform, aspectRatio)
-		particleRenderer.Render(particleSystem, transform, aspectRatio)
-		pathRenderer.Stroke(pathBuffer)
+		spriteRenderer.Render(sprites, transform)
+		particleRenderer.Render(particleSystem, transform)
+		pathRenderer.Stroke(pathBuffer, transform, mgl32.Vec4{0, 0, 0, 1}, 0.02)
 		window.SwapBuffers()
 	}
 }

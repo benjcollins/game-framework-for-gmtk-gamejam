@@ -1,24 +1,34 @@
-#version 440 core
+#version 410 core
 
 layout (lines) in;
-layout (triangle_strip, max_vertices = 4) out;
+layout (triangle_strip, max_vertices = 8) out;
+// layout (line_strip, max_vertices = 8) out;
 
 in vec2 pass_normal[];
 
+uniform mat3 transform;
+uniform float width;
+
+out float invWidth;
+
+void calculatePosition(int index, float w) {
+    gl_Position = gl_in[index].gl_Position + vec4(transform * vec3(pass_normal[index] * w, 0.0), 1.0);
+    invWidth = width - abs(w);
+    EmitVertex();
+}
+
 void main() {
-    float width = 0.05;
-
-    gl_Position = gl_in[0].gl_Position + vec4(pass_normal[0] * width, 0.0, 1.0); 
-    EmitVertex();
-
-    gl_Position = gl_in[0].gl_Position + vec4(pass_normal[0] * -width, 0.0, 1.0);
-    EmitVertex();
-
-    gl_Position = gl_in[1].gl_Position + vec4(pass_normal[1] * width, 0.0, 1.0);
-    EmitVertex();
-
-    gl_Position = gl_in[1].gl_Position + vec4(pass_normal[1] * -width, 0.0, 1.0);
-    EmitVertex();
+    calculatePosition(0, width);
+    calculatePosition(0, 0);
+    calculatePosition(1, width);
+    calculatePosition(1, 0);
     
+    EndPrimitive();
+
+    calculatePosition(0, 0);
+    calculatePosition(0, -width);
+    calculatePosition(1, 0);
+    calculatePosition(1, -width);
+
     EndPrimitive();
 }

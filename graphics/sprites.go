@@ -141,7 +141,7 @@ func CreateRenderer() *SpriteRenderer {
 	return &SpriteRenderer{program}
 }
 
-func (renderer *SpriteRenderer) Render(sprites Sprites, transform mgl32.Mat3, aspectRatio float32) {
+func (renderer *SpriteRenderer) Render(sprites Sprites, transform mgl32.Mat3) {
 
 	sprites.texture.Bind(0)
 
@@ -149,7 +149,7 @@ func (renderer *SpriteRenderer) Render(sprites Sprites, transform mgl32.Mat3, as
 
 	renderer.program.Bind(map[string]Uniform{
 		"textureSampler": 0,
-		"transform":      ComputeAspectRatio(aspectRatio).Mul3(transform),
+		"transform":      transform,
 	})
 
 	gl.DrawElementsWithOffset(gl.TRIANGLES, int32(sprites.size), gl.UNSIGNED_INT, 0)

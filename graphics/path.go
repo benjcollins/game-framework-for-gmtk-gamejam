@@ -112,14 +112,20 @@ func CreatePathRenderer() PathRenderer {
 	return renderer
 }
 
-func (renderer *PathRenderer) Fill(path PathBuffer) {
+func (renderer *PathRenderer) Fill(path PathBuffer, transform mgl32.Mat3, color mgl32.Vec4) {
 	gl.BindVertexArray(path.vao)
-	renderer.fillProgram.Bind(map[string]Uniform{})
+	renderer.fillProgram.Bind(map[string]Uniform{
+		"transform": transform,
+	})
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(path.size))
 }
 
-func (renderer *PathRenderer) Stroke(path PathBuffer) {
+func (renderer *PathRenderer) Stroke(path PathBuffer, transform mgl32.Mat3, color mgl32.Vec4, width float32) {
 	gl.BindVertexArray(path.vao)
-	renderer.strokeProgram.Bind(map[string]Uniform{})
+	renderer.strokeProgram.Bind(map[string]Uniform{
+		"transform": transform,
+		"color":     color,
+		"width":     width,
+	})
 	gl.DrawArrays(gl.LINES, 0, int32(path.size))
 }

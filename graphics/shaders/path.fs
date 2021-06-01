@@ -1,7 +1,17 @@
 #version 410 core
 
+in float invWidth;
+
 out vec4 frag_color;
 
+uniform vec4 color;
+
 void main() {
-    frag_color = vec4(1.0, 0.0, 0.0, 1.0);
+    float threshold = 0.008;
+
+    if (invWidth > threshold) {
+        frag_color = color;
+    } else {
+        frag_color = invWidth / threshold * color;
+    }
 }

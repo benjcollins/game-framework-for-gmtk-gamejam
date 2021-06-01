@@ -65,6 +65,10 @@ func (program *Program) Bind(uniforms map[string]Uniform) {
 			gl.Uniform1f(location, data)
 		case mgl32.Vec2:
 			gl.Uniform2fv(location, 1, &data[0])
+		case mgl32.Vec3:
+			gl.Uniform3fv(location, 1, &data[0])
+		case mgl32.Vec4:
+			gl.Uniform4fv(location, 1, &data[0])
 		case mgl32.Mat3:
 			gl.UniformMatrix3fv(location, 1, true, &data[0])
 		}

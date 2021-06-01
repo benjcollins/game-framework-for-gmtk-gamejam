@@ -129,12 +129,12 @@ func CreateParticleRenderer() *ParticleRenderer {
 	return &renderer
 }
 
-func (renderer *ParticleRenderer) Render(particles *ParticleSystem, transform mgl32.Mat3, aspectRatio float32) {
+func (renderer *ParticleRenderer) Render(particles *ParticleSystem, transform mgl32.Mat3) {
 	renderer.program.Bind(map[string]Uniform{
 		"textureSampler":  0,
 		"hFrames":         particles.hFrames,
 		"vFrames":         particles.vFrames,
-		"globalTransform": ComputeAspectRatio(aspectRatio).Mul3(transform),
+		"globalTransform": transform,
 	})
 
 	gl.BindVertexArray(particles.vao)
