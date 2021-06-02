@@ -8,6 +8,7 @@ in vec2 pass_normal[];
 
 uniform mat3 transform;
 uniform float width;
+uniform int sides;
 
 out float invWidth;
 
@@ -18,17 +19,21 @@ void calculatePosition(int index, float w) {
 }
 
 void main() {
-    calculatePosition(0, width);
-    calculatePosition(0, 0);
-    calculatePosition(1, width);
-    calculatePosition(1, 0);
-    
-    EndPrimitive();
+    if (sides == 0 || sides == 1) {
+        calculatePosition(0, width);
+        calculatePosition(0, 0);
+        calculatePosition(1, width);
+        calculatePosition(1, 0);
+        
+        EndPrimitive();
+    }
 
-    calculatePosition(0, 0);
-    calculatePosition(0, -width);
-    calculatePosition(1, 0);
-    calculatePosition(1, -width);
+    if (sides == 0 || sides == 2) {
+        calculatePosition(0, 0);
+        calculatePosition(0, -width);
+        calculatePosition(1, 0);
+        calculatePosition(1, -width);
 
-    EndPrimitive();
+        EndPrimitive();
+    }
 }

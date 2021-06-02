@@ -2,7 +2,6 @@ package graphics
 
 import (
 	"log"
-	"math"
 	"unsafe"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
@@ -22,6 +21,9 @@ var FillFS string
 
 //go:embed shaders/stroke.gs
 var StrokeGS string
+
+//go:embed shaders/fill.gs
+var FillGS string
 
 type PathRenderer struct {
 	strokeProgram Program
@@ -61,6 +63,37 @@ func (path *Path) LineTo(newPoint mgl32.Vec2) {
 	path.lastNormal = newNormal
 }
 
+func normalInQuadratic(start, control, end mgl32.Vec2, t float32) mgl32.Vec2 {
+	tangent := control.Sub(start).Mul(2 * (1 - t)).Add(end.Sub(control).Mul(2 * t))
+	return perp(tangent).Normalize()
+}
+
+func pointInQuadratic(start, control, end mgl32.Vec2, t float32) mgl32.Vec2 {
+	return start.Mul((1 - t) * (1 - t)).Add(control.Mul(2 * (1 - t) * t)).Add(end.Mul(t * t))
+}
+
+func (path *Path) QuadraticTo(controlPoint, newPoint mgl32.Vec2) {
+
+	normal := normalInQuadratic(path.lastPoint, controlPoint, newPoint, 0.0)
+	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
+		averageNormal := averageNormals(path.lastNormal, normal)
+		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
+	} else {
+		path.points = append(path.points, PathVertex{path.lastPoint, normal})
+	}
+
+	n := 4
+
+	for i := 1; i < n; i++ {
+		point := pointInQuadratic(path.lastPoint, controlPoint, newPoint, float32(i)/float32(n))
+		normal := normalInQuadratic(path.lastPoint, controlPoint, newPoint, float32(i)/float32(n))
+		path.points = append(path.points, PathVertex{point, normal}, PathVertex{point, normal})
+	}
+
+	path.lastPoint = newPoint
+	path.lastNormal = normalInQuadratic(path.lastPoint, controlPoint, newPoint, 1.0)
+}
+
 func averageNormals(n1, n2 mgl32.Vec2) mgl32.Vec2 {
 	normal := n1.Add(n2).Normalize()
 	factor := 1.0 / normal.Dot(n1)
@@ -71,66 +104,12 @@ func normalInArc(center, point mgl32.Vec2) mgl32.Vec2 {
 	return point.Sub(center).Normalize()
 }
 
-// func (path *Path) ArcTo(newPoint mgl32.Vec2, theta float64) {
-
-// 	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
-// 		averageNormal := averageNormals(path.lastNormal, normalInArc(center, path.lastPoint))
-// 		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
-// 	} else {
-// 		path.points = append(path.points, PathVertex{path.lastPoint, normalInArc(center, path.lastPoint)})
-// 	}
-
-// 	n := 16
-// 	centerToOld := path.lastPoint.Sub(center)
-// 	startTheta := math.Atan(float64(centerToOld.Y()/centerToOld.X())) + math.Pi
-
-// 	radius := center.Sub(path.lastPoint).Len()
-
-// 	for i := 1; i < n; i++ {
-// 		turn := startTheta + theta/float64(n)*float64(i)
-// 		point := mgl32.Vec2{float32(math.Cos(turn)), float32(math.Sin(turn))}.Mul(radius).Add(center)
-// 		normal := normalInArc(center, point)
-// 		path.points = append(path.points, PathVertex{point, normal}, PathVertex{point, normal})
-// 	}
-
-// 	point := mgl32.Vec2{float32(math.Cos(startTheta + theta)), float32(math.Sin(startTheta + theta))}.Mul(radius).Add(center)
-// 	path.lastPoint = point
-// 	path.lastNormal = normalInArc(center, point)
-// }
-
-func (path *Path) ArcTo(newPoint mgl32.Vec2, theta float64) {
-
-	oldToNew := newPoint.Sub(path.lastPoint)
-	radius := 0.5 * oldToNew.Len() / float32(math.Sin(theta))
-	center := path.lastPoint.Add(newPoint).Mul(0.5).Add(mgl32.Vec2{oldToNew.Y(), -oldToNew.X()}.Normalize().Mul(float32(math.Sqrt(float64(radius*radius - 0.25*oldToNew.Len()*oldToNew.Len())))))
-
-	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
-		averageNormal := averageNormals(path.lastNormal, normalInArc(center, path.lastPoint))
-		path.points = append(path.points, PathVertex{path.lastPoint, averageNormal}, PathVertex{path.lastPoint, averageNormal})
-	} else {
-		path.points = append(path.points, PathVertex{path.lastPoint, normalInArc(center, path.lastPoint)})
-	}
-
-	n := 16
-	centerToOld := path.lastPoint.Sub(center)
-	startTheta := math.Atan(float64(centerToOld.Y()/centerToOld.X())) + math.Pi
-
-	for i := 1; i < n; i++ {
-		turn := startTheta - theta/float64(n)*float64(i)
-		point := mgl32.Vec2{float32(math.Cos(turn)), float32(math.Sin(turn))}.Mul(radius).Add(center)
-		normal := normalInArc(center, point)
-		path.points = append(path.points, PathVertex{point, normal}, PathVertex{point, normal})
-	}
-
-	path.lastPoint = newPoint
-	path.lastNormal = normalInArc(center, newPoint)
-}
-
 func (path *Path) MoveTo(newPoint mgl32.Vec2) {
 	if !path.lastNormal.ApproxEqual(mgl32.Vec2{0, 0}) {
 		path.points = append(path.points, PathVertex{path.lastPoint, path.lastNormal})
 	}
 	path.lastPoint = newPoint
+	path.lastNormal = mgl32.Vec2{0, 0}
 }
 
 func (path *Path) ToBuffer() PathBuffer {
@@ -166,11 +145,13 @@ func CreatePathRenderer() PathRenderer {
 	check(err)
 	fs, err := CreateFragmentShader(FillFS)
 	check(err)
-	program, err := CreateProgramVSFS(vs, fs)
+	gs, err := CreateGeometryShader(FillGS)
+	check(err)
+	program, err := CreateProgramVSGSFS(vs, gs, fs)
 	check(err)
 	renderer.fillProgram = program
 
-	gs, err := CreateGeometryShader(StrokeGS)
+	gs, err = CreateGeometryShader(StrokeGS)
 	check(err)
 	fs, err = CreateFragmentShader(StrokeFS)
 	check(err)
@@ -192,13 +173,14 @@ func (renderer *PathRenderer) Fill(path PathBuffer, transform mgl32.Mat3, color 
 	renderer.fillProgram.Bind(map[string]Uniform{
 		"transform": transform,
 		"color":     color,
+		"origin":    mgl32.Vec2{0, 0},
 	})
-	gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(path.size))
+	gl.DrawArrays(gl.LINES, 0, int32(path.size))
 
 	gl.ColorMask(true, true, true, true)
 	gl.StencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
 	gl.StencilFunc(gl.EQUAL, 0xFF, 0xFF)
-	gl.DrawArrays(gl.TRIANGLE_FAN, 0, int32(path.size))
+	gl.DrawArrays(gl.LINES, 0, int32(path.size))
 
 	gl.Disable(gl.STENCIL_TEST)
 }
@@ -209,6 +191,8 @@ func (renderer *PathRenderer) Stroke(path PathBuffer, transform mgl32.Mat3, colo
 		"transform": transform,
 		"color":     color,
 		"width":     width,
+		"sides":     0,
+		"threshold": float32(0.004),
 	})
 	gl.DrawArrays(gl.LINES, 0, int32(path.size))
 }
