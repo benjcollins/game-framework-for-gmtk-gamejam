@@ -55,9 +55,9 @@ func CreateSpriteBuffer(sprites []Sprite, texture Texture) Sprites {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo.ID)
 
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointerWithOffset(0, 2, gl.FLOAT, false, int32(unsafe.Sizeof(SpriteVertex{})), 0)
+	gl.VertexAttribPointerWithOffset(0, 2, gl.FLOAT, false, int32(unsafe.Sizeof(SpriteVertex{})), unsafe.Offsetof(SpriteVertex{}.pos))
 	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointerWithOffset(1, 2, gl.FLOAT, false, int32(unsafe.Sizeof(SpriteVertex{})), 2*4)
+	gl.VertexAttribPointerWithOffset(1, 2, gl.FLOAT, false, int32(unsafe.Sizeof(SpriteVertex{})), unsafe.Offsetof(SpriteVertex{}.tx))
 
 	ibo := CreateBuffer()
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo.ID)
@@ -123,7 +123,7 @@ func (buffer *Sprites) UpdateContents(start int, sprites []Sprite) {
 	gl.BufferSubData(gl.ELEMENT_ARRAY_BUFFER, start*4*6, len(indicies)*4, unsafe.Pointer(&indicies[0]))
 }
 
-func CreateRenderer() *SpriteRenderer {
+func CreateSpriteRenderer() *SpriteRenderer {
 	fs, err := CreateFragmentShader(SpriteShaderFS)
 	if err != nil {
 		log.Fatal(err)

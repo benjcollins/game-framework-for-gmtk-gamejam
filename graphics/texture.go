@@ -12,21 +12,11 @@ import (
 )
 
 type Texture struct {
-	textureID uint32
+	textureID     uint32
+	width, height int
 }
 
-func CreateTexture(data []byte) (Texture, error) {
-	reader := bytes.NewReader(data)
-	img, _, err := image.Decode(reader)
-	if err != nil {
-		return Texture{}, err
-	}
-
-	rgba, ok := img.(*image.NRGBA)
-	if !ok {
-		return Texture{}, fmt.Errorf("image must be a png image")
-	}
-
+func TextureFromRGBA(rgba *image.NRGBA) Texture {
 	width := int32(rgba.Rect.Dx())
 	height := int32(rgba.Rect.Dy())
 
@@ -39,11 +29,26 @@ func CreateTexture(data []byte) (Texture, error) {
 	borderColor := [4]float32{0.0, 0.0, 0.0, 0.0}
 	gl.TexParameterfv(gl.TEXTURE_2D, gl.TEXTURE_BORDER_COLOR, &borderColor[0])
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&rgba.Pix[0]))
 
-	return Texture{textureID}, nil
+	return Texture{textureID, int(width), int(height)}
+}
+
+func TextureFromPNG(data []byte) (Texture, error) {
+	reader := bytes.NewReader(data)
+	img, _, err := image.Decode(reader)
+	if err != nil {
+		return Texture{}, err
+	}
+
+	rgba, ok := img.(*image.NRGBA)
+	if !ok {
+		return Texture{}, fmt.Errorf("image must be a png image")
+	}
+
+	return TextureFromRGBA(rgba), nil
 }
 
 func (texture Texture) Bind(n uint32) {
