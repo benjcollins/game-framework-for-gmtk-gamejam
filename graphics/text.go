@@ -86,6 +86,25 @@ func CreateTextRenderer() TextRenderer {
 func CreateText(str string, font Font) Text {
 	text := Text{font: font}
 
+	gl.CreateVertexArrays(1, &text.vao)
+	gl.BindVertexArray(text.vao)
+
+	gl.CreateBuffers(1, &text.vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, text.vbo)
+	gl.EnableVertexAttribArray(0)
+	gl.VertexAttribPointerWithOffset(0, 2, gl.FLOAT, false, int32(unsafe.Sizeof(TextVertex{})), unsafe.Offsetof(TextVertex{}.pos))
+	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointerWithOffset(1, 2, gl.FLOAT, false, int32(unsafe.Sizeof(TextVertex{})), unsafe.Offsetof(TextVertex{}.texCoord))
+
+	gl.CreateBuffers(1, &text.ibo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, text.ibo)
+
+	text.SetString(str)
+
+	return text
+}
+
+func (text *Text) SetString(str string) {
 	vertices := make([]TextVertex, len(str)*4)
 	indicies := make([]uint32, len(str)*6)
 
@@ -93,16 +112,16 @@ func CreateText(str string, font Font) Text {
 
 	for i := range str {
 
-		charData := font.data.Characters[str[i:i+1]]
+		charData := text.font.data.Characters[str[i:i+1]]
 
 		right := left + float32(charData.Width)
 		bottom := float32(0.0)
 		top := float32(charData.Height)
 
-		leftTex := float32(charData.X) / float32(font.texture.width)
-		rightTex := float32(charData.X+charData.Width) / float32(font.texture.width)
-		topTex := float32(charData.Y) / float32(font.texture.height)
-		bottomTex := float32(charData.Y+charData.Height) / float32(font.texture.height)
+		leftTex := float32(charData.X) / float32(text.font.texture.width)
+		rightTex := float32(charData.X+charData.Width) / float32(text.font.texture.width)
+		topTex := float32(charData.Y) / float32(text.font.texture.height)
+		bottomTex := float32(charData.Y+charData.Height) / float32(text.font.texture.height)
 
 		copy(vertices[i*4:(i+1)*4], []TextVertex{
 			{mgl32.Vec2{right, top}, mgl32.Vec2{rightTex, topTex}},
@@ -122,22 +141,11 @@ func CreateText(str string, font Font) Text {
 
 	text.length = len(str)
 
-	gl.CreateVertexArrays(1, &text.vao)
-	gl.BindVertexArray(text.vao)
-
-	gl.CreateBuffers(1, &text.vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, text.vbo)
 	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(TextVertex{}))*len(vertices), unsafe.Pointer(&vertices[0]), gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointerWithOffset(0, 2, gl.FLOAT, false, int32(unsafe.Sizeof(TextVertex{})), unsafe.Offsetof(TextVertex{}.pos))
-	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointerWithOffset(1, 2, gl.FLOAT, false, int32(unsafe.Sizeof(TextVertex{})), unsafe.Offsetof(TextVertex{}.texCoord))
 
-	gl.CreateBuffers(1, &text.ibo)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, text.ibo)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 4*len(indicies), unsafe.Pointer(&indicies[0]), gl.STATIC_DRAW)
-
-	return text
 }
 
 func (renderer *TextRenderer) Render(text Text, transform mgl32.Mat3) {

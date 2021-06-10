@@ -70,7 +70,7 @@ func (program *Program) Bind(uniforms map[string]Uniform) {
 		case mgl32.Vec4:
 			gl.Uniform4fv(location, 1, &data[0])
 		case mgl32.Mat3:
-			gl.UniformMatrix3fv(location, 1, true, &data[0])
+			gl.UniformMatrix3fv(location, 1, false, &data[0])
 		}
 	}
 }

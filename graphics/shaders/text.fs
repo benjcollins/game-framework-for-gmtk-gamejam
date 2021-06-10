@@ -6,15 +6,20 @@ out vec4 frag_color;
 
 uniform sampler2D textureSampler;
 
+uniform mat3 transform;
+
 void main() {
     float width = 0.5;
-    float alias = 0.08;
+    float thing = 0.0003;
+    float alias = (inverse(transform) * vec3(thing, thing, 0.0)).x;
 
     vec4 color = texture(textureSampler, pass_uv);
-    if (color.r < width - alias) {
+    float brightness = color.r;
 
-    } else if (color.r < width) {
-        frag_color = vec4(0.0, 0.0, 0.0, (color.r - width + alias) / alias);
+    if (brightness < width - alias) {
+
+    } else if (brightness < width) {
+        frag_color = vec4(0.0, 0.0, 0.0, (brightness - width + alias) / alias);
     } else {
         frag_color = vec4(0.0, 0.0, 0.0, 1.0);
     }

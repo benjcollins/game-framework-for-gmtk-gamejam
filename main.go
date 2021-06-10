@@ -66,7 +66,7 @@ func main() {
 	for !window.ShouldClose() {
 		glfw.PollEvents()
 
-		transform := aspectRatio.Mul3(mgl32.Scale2D(0.001, 0.001))
+		transform := aspectRatio.Mul3(mgl32.Translate2D(-0.3, 0)).Mul3(mgl32.Scale2D(0.005, 0.005))
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
